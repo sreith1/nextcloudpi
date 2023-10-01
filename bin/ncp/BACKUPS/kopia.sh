@@ -13,6 +13,10 @@ tmpl_repository_type() {
   [[ "$DESTINATION" =~ .*'@'.*':'.* ]] && echo "sftp" || echo "filesystem"
 }
 
+tmpl_repository_password() {
+  find_app_param kopia REPOSITORY_PASSWORD
+}
+
 install() {
  :;
 }
@@ -40,11 +44,13 @@ configure() {
     kopia_args=(--path "/repository")
   fi
 
+  export KOPIA_PASSWORD="${REPOSITORY_PASSWORD}"
 
   echo "Attempting to connect to existing repository first..."
   docker run --rm --pull always \
     -v /usr/local/etc/kopia:/app/config \
     -v /var/log/kopia:/app/logs \
+    -e KOPIA_PASSWORD \
     "${docker_args[@]}" \
     kopia/kopia:latest repository connect "${repo_type}" \
       "${kopia_args[@]}" \
@@ -54,6 +60,7 @@ configure() {
     docker run --rm --pull always \
       -v /usr/local/etc/kopia:/app/config \
       -v /var/log/kopia:/app/logs \
+      -e KOPIA_PASSWORD \
       "${docker_args[@]}" \
       kopia/kopia:latest repository create "${repo_type}" \
         "${kopia_args[@]}" \
@@ -77,7 +84,7 @@ configure() {
 
   cat > /etc/cron.hourly/ncp-kopia <<EOF
 #!/bin/bash
-/usr/local/bin/kopia-bkp.sh
+/usr/local/bin/kopia-bkp.sh "${REPOSITORY_PASSWORD}"
 EOF
   echo "Repository initialized successfully"
 
