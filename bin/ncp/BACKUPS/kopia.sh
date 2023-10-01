@@ -82,13 +82,14 @@ configure() {
     -e KOPIA_PASSWORD \
     kopia/kopia:latest policy set --global \
       --keep-annual 2 --keep-monthly 12 --keep-weekly 4 --keep-daily 7 --keep-hourly 24 \
-      --add-ignore '/ncdata/.opcache' \
-      --add-ignore '/ncdata/nextcloud.log' \
-      --add-ignore '/ncdata/ncp-update-backups' \
-      --add-ignore '/ncdata/appdata_*/preview/*' \
-      --add-ignore '/ncdata/*/cache' \
-      --add-ignore '/ncdata/*/uploads' \
-      --add-ignore '/ncdata/.data_*'
+      --add-ignore '.opcache' \
+      --add-ignore '.kopia' \
+      --add-ignore '/nextcloud.log' \
+      --add-ignore '/ncp-update-backups' \
+      --add-ignore '/appdata_*/preview/*' \
+      --add-ignore '/*/cache' \
+      --add-ignore '/*/uploads' \
+      --add-ignore '/.data_*'
 
   touch /usr/local/etc/kopia/password
   chmod 0640 /usr/local/etc/kopia/password

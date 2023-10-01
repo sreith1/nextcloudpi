@@ -8,7 +8,7 @@ repo_path="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_destination)"
 docker_args=()
 [[ $- == *i* ]] && docker_args+=(-it)
 [[ "$repo_type" == "filesystem" ]] && docker_args=(-v "${repo_path}:/repository")
-data_dir="$(source "${BINDIR}/CONFIG/nc-datadir.sh"; tmpl_data_dir)"
+data_dir="$(get_nc_config_value datadirectory)"
 cache_dir="${data_dir}/.kopia"
 [[ -z "$KOPIA_PASSWORD" ]] || docker_args+=(-e KOPIA_PASSWORD)
 
