@@ -18,7 +18,8 @@ tmpl_repository_password() {
 }
 
 install() {
- :;
+  wget https://raw.githubusercontent.com/nachoparker/btrfs-snp/master/btrfs-snp -O /usr/local/bin/btrfs-snp
+  chmod +x /usr/local/bin/btrfs-snp
 }
 
 configure() {
@@ -76,6 +77,7 @@ configure() {
     -v /usr/local/etc/kopia:/app/config \
     -v /var/log/kopia:/app/logs \
     -v "${DESTINATION}:/repository" \
+    -e KOPIA_PASSWORD \
     kopia/kopia:latest policy set --global \
       --keep-annual 2 --keep-monthly 12 --keep-weekly 4 --keep-daily 7 --keep-hourly 24 \
       --add-ignore '/ncdata/.opcache' \

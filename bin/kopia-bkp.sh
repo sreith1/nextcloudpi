@@ -21,14 +21,18 @@ repo_type="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_repository_type)"
 repo_path="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_destination)"
 docker_args=()
 [[ "$repo_type" == "filesystem" ]] && docker_args=(-v "${repo_path}:/repository")
-data_dir="$(source "${BINDIR}/CONFIG/nc-data_dir.sh"; tmpl_data_dir)"
+data_dir="$(source "${BINDIR}/CONFIG/nc-datadir.sh"; tmpl_data_dir)"
 cache_dir="${data_dir}/.kopia"
+is_nc_encrypt_active="$(source "${BINDIR}/SECURITY/nc-encrypt.sh"; is_active && echo 'true' || echo 'false')"
 mkdir -p "${cache_dir}"
 
-mountpoint="$( stat -c "%m" "$data_dir" )" || { echo "Error retrieving ncdata mountpoint"; return 1; }
+data_subvol="$data_dir"
+[[ "$is_nc_encrypt_active" == "true" ]] && data_subvol="$(dirname "$data_dir")"
 
 db_backup_dir="$(dirname "${data_dir}")"
 db_backup_file="ncp-db-$( date -Iseconds -u )-bkp.sql"
+db_backup_file="${db_backup_file/+00:00/}"
+db_backup_file="${db_backup_file//:/-}"
 mysqldump -u root --single-transaction nextcloud > "${db_backup_dir}/${db_backup_file}"
 
 cleanup(){
@@ -39,7 +43,7 @@ cleanup(){
 }
 trap cleanup EXIT
 
-docker run --rm \
+docker run --rm --pull always \
   -v /usr/local/etc/kopia:/app/config \
   -v "${cache_dir}:/app/cache" \
   -v "${db_backup_dir?}/${db_backup_file?}:/db/${db_backup_file}" \
@@ -47,7 +51,7 @@ docker run --rm \
   "${docker_args[@]}" \
   kopia/kopia:latest snapshot create "/db/${db_backup_file}"
 
-if [[ "$( stat -fc%T "$mountpoint" )" == "btrfs" ]]
+if [[ "$( stat -fc%T "$data_subvol" )" == "btrfs" ]] && btrfs subvolume show "$data_subvol" 2>/dev/null
 then
   create_data_snapshot "${mountpoint}"
   data_dir="$(dirname "${mountpoint}")/ncp-snapshots"
