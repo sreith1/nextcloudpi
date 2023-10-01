@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 
+[[ "$(id -u)" == "0" ]] && export KOPIA_PASSWORD="$(cat /usr/local/etc/kopia/password)"
+
 source /usr/local/etc/library.sh
 repo_type="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_repository_type)"
 repo_path="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_destination)"
 docker_args=()
+[[ $- == *i* ]] && docker_args+=(-it)
 [[ "$repo_type" == "filesystem" ]] && docker_args=(-v "${repo_path}:/repository")
 data_dir="$(source "${BINDIR}/CONFIG/nc-datadir.sh"; tmpl_data_dir)"
 cache_dir="${data_dir}/.kopia"
+[[ -z "$KOPIA_PASSWORD" ]] || docker_args+=(-e KOPIA_PASSWORD)
 
-docker run --rm -it \
+docker run --rm \
   -v /usr/local/etc/kopia:/app/config \
   -v "${cache_dir}:/app/cache" \
   "${docker_args[@]}" \
