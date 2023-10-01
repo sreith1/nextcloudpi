@@ -49,7 +49,7 @@ docker run --rm --pull always \
   -v "${db_backup_dir?}/${db_backup_file?}:/db/${db_backup_file}" \
   -e KOPIA_PASSWORD \
   "${docker_args[@]}" \
-  kopia/kopia:latest snapshot create "/db/${db_backup_file}"
+  kopia/kopia:latest snapshot create "/db"
 
 if [[ "$( stat -fc%T "$data_subvol" )" == "btrfs" ]] && btrfs subvolume show "$data_subvol" 2>/dev/null
 then

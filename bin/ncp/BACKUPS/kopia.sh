@@ -29,6 +29,8 @@ configure() {
   mkdir -p /usr/local/etc/kopia
   mkdir -p /var/log/kopia
   hostname="$(ncc config:system:get overwrite.cli.url)"
+  hostname="${hostname##http*:\/\/}}"
+  hostname="${hostname%%/*}"
 
   docker_args=()
   kopia_args=()
