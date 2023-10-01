@@ -22,6 +22,9 @@ install() {
 }
 
 configure() {
+
+  set -e
+
   mkdir -p /usr/local/etc/kopia
   mkdir -p /var/log/kopia
   hostname="$(ncc config:system:get overwrite.cli.url)"
@@ -57,7 +60,7 @@ configure() {
       --override-username ncp \
       --override-hostname "$hostname" || {
     echo "Creating new repository..."
-    docker run --rm --pull always \
+    docker run --rm \
       -v /usr/local/etc/kopia:/app/config \
       -v /var/log/kopia:/app/logs \
       -e KOPIA_PASSWORD \
@@ -68,7 +71,8 @@ configure() {
         --override-hostname "$hostname"
   }
 
-  docker run --rm --pull always \
+  echo "Configuring backup policy..."
+  docker run --rm \
     -v /usr/local/etc/kopia:/app/config \
     -v /var/log/kopia:/app/logs \
     -v "${DESTINATION}:/repository" \
