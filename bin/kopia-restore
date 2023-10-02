@@ -4,13 +4,36 @@ set -e
 
 source /usr/local/etc/library.sh
 
-REPOSITORY="${1?}"
-REPOSITORY_PASSWORD="${2?}"
-SNAPSHOT_ID="${3?}"
+SNAPSHOT_ID="${1?}"
+REPOSITORY="${2}"
+REPOSITORY_PASSWORD="${3}"
 
 data_dir="$(get_nc_config_value datadirectory)"
 docker_args=()
 kopia_args=()
+[[ -z "$REPOSITORY" ]] && ! [[ -f /usr/local/etc/kopia/repository.config ]] && {
+  echo "REPOSITORY not set and no repository config found!"
+  exit 1
+}
+if [[ -z "$REPOSITORY" ]]
+then
+  config_path="/usr/local/etc/kopia/repository.config"
+  repo_type="$(jq -er '.storage.type' "${config_path}")"
+  if [[ "$repo_type" == "filesystem" ]]
+  then
+    echo "REPOSITORY not set. Attempting to read value from kopia ncp app"
+    REPOSITORY="$(find_app_param kopia DESTINATION)"
+  elif [[ "$repo_type" == "sftp" ]]
+  then
+    sftp_user="$(jq -er '.storage.config.user' "${config_path}")"
+    sftp_host="$(jq -er '.storage.config.host' "${config_path}")"
+    sftp_path="$(jq -er '.storage.config.path' "${config_path}")"
+    REPOSITORY="${sftp_user}@${sftp_host}:${sftp_path}"
+  else
+    echo "Unsupported storage type '${repo_type}!"
+    exit 1
+  fi
+fi
 if [[ "$REPOSITORY" =~ .*'@'.*':'.* ]]
 then
   repo_type="sftp"
@@ -26,6 +49,7 @@ else
   docker_args=(-v "${repo_path}:/repository")
   kopia_args=(--path "/repository")
 fi
+
 [[ -z "${REPOSITORY_PASSWORD}" ]] && [[ -f /usr/local/etc/kopia/password ]] && \
   REPOSITORY_PASSWORD="$(cat /usr/local/etc/kopia/password)"
 export KOPIA_PASSWORD="${REPOSITORY_PASSWORD}"
