@@ -15,5 +15,6 @@ cache_dir="${data_dir}/.kopia"
 docker run --rm \
   -v /usr/local/etc/kopia:/app/config \
   -v "${cache_dir}:/app/cache" \
+  -v "/var/www/kopia-mount:/tmp:shared" \
   "${docker_args[@]}" \
   kopia/kopia:latest "${@}"

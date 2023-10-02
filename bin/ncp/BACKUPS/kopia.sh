@@ -17,9 +17,84 @@ tmpl_repository_password() {
   find_app_param kopia REPOSITORY_PASSWORD
 }
 
+is_active() {
+  [[ -f /usr/local/etc/kopia/repository.config ]] && [[ -f /etc/cron.hourly/ncp-kopia ]]
+}
+
 install() {
   wget https://raw.githubusercontent.com/nachoparker/btrfs-snp/master/btrfs-snp -O /usr/local/bin/btrfs-snp
   chmod +x /usr/local/bin/btrfs-snp
+  WEBADMIN=ncp
+
+  cat > /etc/apache2/sites-available/kopia.conf <<EOF
+Listen 51000
+<VirtualHost _default_:51000>
+  DocumentRoot /dev/null
+  SSLEngine on
+  SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+  SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+  <IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=15768000; includeSubDomains"
+  </IfModule>
+
+  # 2 days to avoid very big backups requests to timeout
+  TimeOut 172800
+
+  <IfModule mod_authnz_external.c>
+    DefineExternalAuth pwauth pipe /usr/sbin/pwauth
+  </IfModule>
+
+
+  ProxyPass / http://127.0.0.1:51515/
+  ProxyPassReverse / http://127.0.0.1:51515/
+
+  <Location />
+    AuthType Basic
+    AuthName "ncp-web login"
+    AuthBasicProvider external
+    AuthExternal pwauth
+
+    <RequireAll>
+
+     <RequireAny>
+        Require host localhost
+        Require local
+        Require ip 192.168
+        Require ip 172
+        Require ip 10
+        Require ip fe80::/10
+        Require ip fd00::/8
+     </RequireAny>
+
+     <RequireAny>
+        Require env noauth
+        Require user $WEBADMIN
+     </RequireAny>
+
+    </RequireAll>
+    RequestHeader set Authorization "null"
+  </Location>
+
+</VirtualHost>
+EOF
+  cat > /etc/systemd/system/kopia-ui.service <<EOF
+[Unit]
+Description=Kopia web UI
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/kopia-ui --attach
+ExecStop=/usr/local/bin/kopia-ui --stop
+SyslogIdentifier=ncp-kopia-ui
+Restart=on-failure
+RestartSec=120
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
 }
 
 configure() {
@@ -92,13 +167,33 @@ configure() {
       --add-ignore '/.data_*'
 
   touch /usr/local/etc/kopia/password
-  chmod 0640 /usr/local/etc/kopia/password
+  chmod 0600 /usr/local/etc/kopia/password
   chown root: /usr/local/etc/kopia/password
   echo "${REPOSITORY_PASSWORD}" > /usr/local/etc/kopia/password
-  cat > /etc/cron.hourly/ncp-kopia <<EOF
-#!/bin/bash
-/usr/local/bin/kopia-bkp.sh "$(cat /usr/local/etc/kopia/password)"
-EOF
   echo "Repository initialized successfully"
 
+  if [[ "${AUTOMATIC_BACKUPS}" == "yes" ]]
+  then
+    echo "Enabling automatic backups"
+    cat > /etc/cron.hourly/ncp-kopia <<EOF
+#!/bin/bash
+/usr/local/bin/kopia-backup
+EOF
+    chmod +x /etc/cron.hourly/ncp-kopia
+  else
+    rm -f /etc/cron.hourly/ncp-kopia
+  fi
+
+  if [[ "${ENABLE_WEB_UI}" == "yes" ]]
+  then
+    systemctl enable kopia-ui
+    systemctl restart kopia-ui
+    echo "The kopia web UI has been enabled. To access it, go to https://nextcloudpi.local:51000 and login with the same credentials as on the NCP admin interface."
+  else
+    systemctl disable kopia-ui
+    systemctl stop kopia-ui
+    echo "The kopia web UI has been disabled."
+  fi
+
+  echo "Done."
 }
