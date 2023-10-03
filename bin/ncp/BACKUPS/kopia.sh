@@ -83,7 +83,7 @@ setup_repository() {
   repo="${repo_definition#*://}"
   storage_key="$(echo -n "${storage_key}" | base64 -d)"
 
-  [[ -z "$REPOSITORY" ]] && ! [[ -f /usr/local/etc/kopia/repository.config ]] && {
+  [[ -z "$repo_definition" ]] && ! [[ -f /usr/local/etc/kopia/repository.config ]] && {
     echo "REPOSITORY not set and no repository config found!"
     return 1
   }
@@ -116,7 +116,6 @@ setup_repository() {
         eval "$(ssh-agent)"
         ssh-add ~root/.ssh/kopia_key
         kopia_args+=("--key-data=$(cat ~root/.ssh/kopia_key)")
-        echo "Done."
       fi
       ssh -o "BatchMode=yes" -o "StrictHostKeyChecking=no" "${sftp_user}@${sftp_host}" || { echo "SSH non-interactive not properly configured"; return 1; }
       rm ~root/.ssh/kopia_key
@@ -277,6 +276,11 @@ configure() {
       --add-ignore '/*/uploads' \
       --add-ignore '/.data_*'
 
+  if [[ "${RUN_BACKUP}" == "yes" ]]
+  then
+    echo "Running manual backup"
+    /usr/local/bin/kopia-backup
+  fi
 
   if [[ "${AUTOMATIC_BACKUPS}" == "yes" ]]
   then
