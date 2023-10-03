@@ -23,7 +23,7 @@ export KOPIA_PASSWORD
 source /usr/local/etc/library.sh
 
 repo_type="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_repository_type)"
-repo_path="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_destination)"
+repo_path="$(source "${BINDIR}/BACKUPS/kopia.sh"; tmpl_repository_local_path)"
 docker_args=()
 [[ "$repo_type" == "filesystem" ]] && docker_args=(-v "${repo_path}:/repository")
 data_dir="$(source "${BINDIR}/CONFIG/nc-datadir.sh"; tmpl_data_dir)"
